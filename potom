@@ -1,0 +1,2 @@
+enemy_bos_group.update()
+    enemy_bos_group.draw(sc)

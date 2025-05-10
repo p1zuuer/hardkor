@@ -56,3 +56,8 @@ class Enemy(pygame.sprite.Sprite):
        for i in range(3):
         enemy = Enemy(bat_run_images, bat_run_images, pos=(i * 200 + 100, HEIGHT // 3))
         enemy_group.add(enemy)
+
+
+
+if score<price:
+    sc.blit(title, (WIDTH // 2 - title.get_width() // 2, 10))

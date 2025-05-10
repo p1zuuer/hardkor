@@ -1,1 +1,14 @@
 https://polar-34.itch.io/pixel-art-boss-assets
+
+
+class Spawn():
+    def __init__(self):
+        self.timer = 0
+
+        def update(self):
+            if len(enemy_group) <5:
+                enemy = Enemy
+                enemy_group.add(enemy)
+
+
+Button(WIDTH // 2-200,500,400,100,"рывок +1",200+ upgrades["jerk"] * 100),

@@ -3,23 +3,21 @@ import os
 import sys
 import random
 import math
+import time
 from pygame import gfxdraw
 from collections import defaultdict
 
-# Инициализация
 pygame.init()
 
-# Настройки
 WIDTH, HEIGHT = 1200, 800
 FPS = 60
 sc = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("NO HUMANITY: ULTIMATE EDITION")
+pygame.display.set_caption("NO HUMANITY clone")
 clock = pygame.time.Clock()
 FONT = pygame.font.Font(None, 50)
 BIG_FONT = pygame.font.Font(None, 100)
 SMALL_FONT = pygame.font.Font(None, 36)
 
-# Цвета
 RED = (255, 50, 50)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -29,7 +27,6 @@ BLUE = (100, 100, 255)
 BROWN = (150, 75, 0)
 
 
-# Класс кнопки для магазина
 class Button:
     def __init__(self, x, y, width, height, text, price):
         self.rect = pygame.Rect(x, y, width, height)
@@ -54,7 +51,6 @@ class Button:
         return 0
 
 
-# Класс игрока с способностями
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y, upgrades=None):
         super().__init__()
@@ -73,7 +69,6 @@ class Player(pygame.sprite.Sprite):
     def update(self):
         keys = pygame.key.get_pressed()
 
-        # Обработка способностей
         if keys[pygame.K_LSHIFT] and self.abilities["dash"]["cooldown"] <= 0:
             self.abilities["dash"]["active"] = True
             self.abilities["dash"]["cooldown"] = self.abilities["dash"]["max_cooldown"]
@@ -91,7 +86,6 @@ class Player(pygame.sprite.Sprite):
             self.abilities["time_slow"]["active"] = True
             self.abilities["time_slow"]["cooldown"] = self.abilities["time_slow"]["max_cooldown"]
 
-        # Движение
         dx, dy = 0, 0
         if not self.abilities["dash"]["active"]:
             if keys[pygame.K_LEFT] or keys[pygame.K_a]:
@@ -103,7 +97,7 @@ class Player(pygame.sprite.Sprite):
             if keys[pygame.K_DOWN] or keys[pygame.K_s]:
                 dy += self.speed
         else:
-            dx, dy = self.dash_direction[0] * self.speed * 3, self.dash_direction[1] * self.speed * 3
+            dx, dy = self.dash_direction[0] * self.speed * 5, self.dash_direction[1] * self.speed * 3
             self.abilities["dash"]["duration"] -= 1
             if self.abilities["dash"]["duration"] <= 0:
                 self.abilities["dash"]["active"] = False
@@ -117,13 +111,11 @@ class Player(pygame.sprite.Sprite):
         self.rect.y += dy
         self.rect.clamp_ip(sc.get_rect())
 
-        # Обновление перезарядки способностей
         for ability in self.abilities.values():
             if ability["cooldown"] > 0:
                 ability["cooldown"] -= 1
 
 
-# Классы врагов
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y, target):
         super().__init__()
@@ -157,6 +149,14 @@ class FastEnemy(Enemy):
         super().__init__(x, y, target)
         self.speed *= 1.8
         self.image.fill((255, 100, 100))
+        super().__init__()
+        self.image = pygame.Surface((20, 20), pygame.SRCALPHA)
+        pygame.draw.circle(self.image, (255, 0, 0), (10, 10), 10)
+        self.rect = self.image.get_rect(center=(x, y))
+        self.speed = random.uniform(1.5, 3.0)
+        self.target = target
+        self.angle = random.uniform(0, 6.28)
+        self.health = 1
 
 
 class TankEnemy(Enemy):
@@ -164,29 +164,37 @@ class TankEnemy(Enemy):
         super().__init__(x, y, target)
         self.speed *= 0.6
         self.health = 3
-        self.image.fill((100, 100, 255))
-
-
-class BossEnemy(Enemy):
-    def __init__(self, x, y, target):
+        self.image.fill((1000, 100, 255))
         super().__init__(x, y, target)
-        self.image = pygame.Surface((40, 40), pygame.SRCALPHA)
-        pygame.draw.circle(self.image, (255, 0, 255), (20, 20), 20)
-        self.rect = self.image.get_rect(center=(x, y))
-        self.speed = 2.0
-        self.health = 10
-        self.attack_cooldown = 0
-
-    def update(self, time_slow=False):
-        super().update(time_slow)
-        if self.attack_cooldown <= 0:
-            self.attack_cooldown = 60
-            return True  # Создать мини-врагов
-        self.attack_cooldown -= 1
-        return False
+        self.speed *= 1.8
+        self.image.fill((255, 100, 100))
 
 
-# Разрушаемые объекты
+
+
+
+
+
+
+    class BossEnemy(Enemy):
+        def __init__(self, x, y, target):
+            super().__init__(x, y, target)
+            self.image = pygame.Surface((20, 20), pygame.SRCALPHA)
+            pygame.draw.circle(self.image, (255, 100, 255), (40, 40), 20)
+            self.rect = self.image.get_rect(center=(x, y))
+            self.speed = 2.0
+            self.health = 10
+            self.attack_cooldown = 0
+
+        def update(self, time_slow=False):
+            super().update(time_slow)
+            if self.attack_cooldown <= 0:
+                self.attack_cooldown = 60
+                return True
+            self.attack_cooldown -= 1
+            return False
+
+
 class Obstacle(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
@@ -203,7 +211,6 @@ class Obstacle(pygame.sprite.Sprite):
         return False
 
 
-# Эффекты
 def shake_screen(intensity=10, duration=200):
     for _ in range(duration // 10):
         offset = (random.randint(-intensity, intensity), random.randint(-intensity, intensity))
@@ -243,18 +250,18 @@ def draw_particles(particles):
             particles.remove(p)
 
 
-# Магазин улучшений
 def show_shop(points, upgrades):
     buttons = [
-        Button(WIDTH // 2 - 200, 200, 400, 100, "Скорость +1", 100 + upgrades["speed"] * 50),
-        Button(WIDTH // 2 - 200, 350, 400, 100, "Здоровье +1", 150 + upgrades["health"] * 75),
-        Button(WIDTH // 2 - 200, 500, 400, 100, "Запустить игру", 0)
+
+        Button(WIDTH // 2 - 200, 250, 400, 100, "Скорость +1", 100 + upgrades["speed"] * 50),
+        Button(WIDTH // 2 - 200, 380, 400, 100, "Здоровье +1", 150 + upgrades["health"] * 75),
+        Button(WIDTH // 2 - 200, 500, 400, 100, "Запустить игру", 0),
+        Button(WIDTH // 2 - 200, 600, 400, 100, "рывок", 100)
     ]
 
     running = True
     while running:
         sc.fill(BLACK)
-
         title = BIG_FONT.render("МАГАЗИН УЛУЧШЕНИЙ", True, GOLD)
         points_text = FONT.render(f"Очков: {points}", True, WHITE)
         stats_text = FONT.render(
@@ -262,7 +269,7 @@ def show_shop(points, upgrades):
             True, WHITE
         )
 
-        sc.blit(title, (WIDTH // 2 - title.get_width() // 2, 50))
+        sc.blit(title, (WIDTH // 2 - title.get_width() // 2, 10))
         sc.blit(points_text, (WIDTH // 2 - points_text.get_width() // 2, 150))
         sc.blit(stats_text, (WIDTH // 2 - stats_text.get_width() // 2, HEIGHT - 100))
 
@@ -284,17 +291,17 @@ def show_shop(points, upgrades):
                             points -= spent
                             if i == 0:  # Скорость
                                 upgrades["speed"] += 1
-                                buttons[0].price = 100 + upgrades["speed"] * 50
+                                buttons[0].price = 100 + upgrades["speed"] * 25
                             elif i == 1:  # Здоровье
                                 upgrades["health"] += 1
-                                buttons[1].price = 150 + upgrades["health"] * 75
+                                buttons[1].price = 150 + upgrades["health"] * 50
+
                         elif i == 2:  # Кнопка запуска
                             return points, upgrades
 
         clock.tick(FPS)
 
 
-# Меню паузы
 def pause_menu():
     paused = True
     while paused:
@@ -302,11 +309,12 @@ def pause_menu():
         title = BIG_FONT.render("ПАУЗА", True, WHITE)
         hint1 = FONT.render("Нажми ESC чтобы продолжить", True, WHITE)
         hint2 = FONT.render("Нажми Q чтобы выйти в меню", True, WHITE)
+        hint3 = FONT.render("Нажмите O чтобы перейти в магазин", True, WHITE)
 
         sc.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 2 - 100))
         sc.blit(hint1, (WIDTH // 2 - hint1.get_width() // 2, HEIGHT // 2))
         sc.blit(hint2, (WIDTH // 2 - hint2.get_width() // 2, HEIGHT // 2 + 100))
-
+        sc.blit(hint3, (WIDTH // 2 - hint2.get_width() // 2, HEIGHT // 2 + 50))
         pygame.display.flip()
 
         for event in pygame.event.get():
@@ -317,13 +325,13 @@ def pause_menu():
                 if event.key == pygame.K_ESCAPE:
                     paused = False
                 elif event.key == pygame.K_q:
-                    return False  # Выход в главное меню
+                    return False
 
         clock.tick(5)
+
     return True
 
 
-# Основной игровой цикл
 def main():
     upgrades = {"speed": 0, "health": 0}
     total_points = 0
@@ -340,7 +348,6 @@ def main():
         obstacles = pygame.sprite.Group()
         particles = []
 
-        # Создаем несколько препятствий
         for _ in range(5):
             x = random.randint(100, WIDTH - 100)
             y = random.randint(100, HEIGHT - 100)
@@ -354,7 +361,7 @@ def main():
         achievement_shown = False
 
         while running:
-            # Обработка событий
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -367,10 +374,9 @@ def main():
                             break
 
             if not game_over:
-                # Обновление игрового времени
+
                 game_time += 1 / FPS
 
-                # Проверка достижений
                 if not achievement_shown:
                     if game_time >= 30 and not achievements["survive_30s"]["unlocked"]:
                         achievements["survive_30s"]["unlocked"] = True
@@ -382,13 +388,11 @@ def main():
                         achievements["wave_5"]["unlocked"] = True
                         achievement_shown = True
 
-                # Спавн волн врагов
                 if len(enemies) == 0:
                     wave_number += 1
                     achievement_shown = False
                     spawn_wave(wave_number, player, enemies)
 
-                # Обновление времени замедления
                 time_slow_active = player.abilities["time_slow"]["active"] and player.abilities["time_slow"][
                     "duration"] > 0
                 if player.abilities["time_slow"]["active"]:
@@ -396,17 +400,15 @@ def main():
                     if player.abilities["time_slow"]["duration"] <= 0:
                         player.abilities["time_slow"]["active"] = False
 
-                # Обновление объектов
                 all_sprites.update()
                 for enemy in enemies:
                     if isinstance(enemy, BossEnemy) and enemy.update(time_slow_active):
-                        # Босс создает мини-врагов
+
                         for _ in range(3):
                             enemies.add(Enemy(enemy.rect.centerx, enemy.rect.centery, player))
                     else:
                         enemy.update(time_slow_active)
 
-                # Проверка столкновений
                 for enemy in enemies:
                     if pygame.sprite.collide_rect(player, enemy) and not player.invincible:
                         player.health -= 1
@@ -414,18 +416,15 @@ def main():
                             draw_blood(player.rect.center)
                             shake_screen()
                             game_over = True
-                            total_points += int(game_time * 10)  # 10 очков за секунду
+                            total_points += int(game_time * 10)
                         else:
                             player.invincible = True
-                            pygame.time.set_timer(pygame.USEREVENT, 1000)  # 1 сек неуязвимости
+                            pygame.time.set_timer(pygame.USEREVENT, 1000)
 
-                # Отрисовка
                 sc.fill(BLACK)
 
-                # Рисуем препятствия
                 obstacles.draw(sc)
 
-                # Рисуем врагов
                 for enemy in enemies:
                     if random.random() < 0.1 and not time_slow_active:
                         offset = (random.randint(-1, 1), random.randint(-1, 1))
@@ -433,21 +432,17 @@ def main():
                     else:
                         sc.blit(enemy.image, enemy.rect)
 
-                # Рисуем игрока
                 if player.invincible and pygame.time.get_ticks() % 200 < 100:
-                    pass  # Мигание при неуязвимости
+                    pass
                 else:
                     sc.blit(player.image, player.rect)
 
-                # Рисуем частицы
                 draw_particles(particles)
 
-                # Интерфейс
                 time_text = FONT.render(f"Время: {int(game_time)} сек", True, WHITE)
                 wave_text = FONT.render(f"Волна: {wave_number}", True, WHITE)
                 health_text = FONT.render(f"Жизни: {player.health}", True, RED if player.health == 1 else GREEN)
 
-                # Отображение перезарядки способностей
                 dash_cooldown = max(0, player.abilities["dash"]["cooldown"])
                 dash_text = SMALL_FONT.render(f"Рывок: {dash_cooldown // FPS + 1}c", True, WHITE)
 
@@ -460,12 +455,10 @@ def main():
                 sc.blit(dash_text, (WIDTH - 200, 10))
                 sc.blit(time_slow_text, (WIDTH - 200, 50))
 
-                # Отображение активного замедления времени
                 if time_slow_active:
-                    slow_text = FONT.render("ЗАМЕДЛЕНИЕ!", True, BLUE)
+                    slow_text = FONT.render("медленней!", True, BLUE)
                     sc.blit(slow_text, (WIDTH // 2 - slow_text.get_width() // 2, 10))
 
-                # Отображение достижений
                 if achievement_shown:
                     for i, (key, ach) in enumerate(achievements.items()):
                         if ach["unlocked"] and ach.get("new", False):
@@ -473,18 +466,19 @@ def main():
                             sc.blit(ach_text, (WIDTH // 2 - ach_text.get_width() // 2, HEIGHT // 2 - 100 + i * 50))
                             ach["new"] = False
             else:
-                # Экран смерти
+
                 sc.fill(BLACK)
                 death_text = BIG_FONT.render("ВЫ ПРОИГРАЛИ!", True, RED)
                 points_text = FONT.render(f"Заработано очков: {int(game_time * 10)}", True, WHITE)
                 total_text = FONT.render(f"Всего очков: {total_points}", True, GOLD)
-                hint_text = SMALL_FONT.render("Нажмите ПРОБЕЛ для магазина", True, WHITE)
+                hint_text = SMALL_FONT.render("Нажмите ПРОБЕЛ для перехода в магазин", True, WHITE)
+                play_text = FONT.render("нажмите Enter чтобы вернутся к игре", True, WHITE)
 
                 sc.blit(death_text, (WIDTH // 2 - death_text.get_width() // 2, HEIGHT // 2 - 100))
                 sc.blit(points_text, (WIDTH // 2 - points_text.get_width() // 2, HEIGHT // 2))
                 sc.blit(total_text, (WIDTH // 2 - total_text.get_width() // 2, HEIGHT // 2 + 50))
                 sc.blit(hint_text, (WIDTH // 2 - hint_text.get_width() // 2, HEIGHT // 2 + 150))
-
+                sc.blit(play_text, (WIDTH // 2 - play_text.get_width() // 2, HEIGHT // 2 + 200))
                 keys = pygame.key.get_pressed()
                 if keys[pygame.K_SPACE]:
                     total_points, upgrades = show_shop(total_points, upgrades)
@@ -508,7 +502,6 @@ def spawn_wave(wave_number, player, enemies):
         else:
             x, y = random.randint(0, WIDTH), HEIGHT + 20
 
-        # Выбираем тип врага в зависимости от волны
         if wave_number > 3 and random.random() < 0.3:
             if random.random() < 0.5:
                 enemies.add(FastEnemy(x, y, player))
@@ -517,7 +510,6 @@ def spawn_wave(wave_number, player, enemies):
         else:
             enemies.add(Enemy(x, y, player))
 
-    # Каждые 5 волн добавляем босса
     if wave_number % 5 == 0:
         enemies.add(BossEnemy(WIDTH // 2, -100, player))
 

@@ -12,3 +12,26 @@ class Spawn():
 
 
 Button(WIDTH // 2-200,500,400,100,"рывок +1",200+ upgrades["jerk"] * 100),
+
+
+
+
+
+
+
+
+
+
+class LazerStats(Lazer):
+    Normali = "normali"
+    Mostthennormali = "mosthennormali"
+    Big = "Big"
+
+
+
+class lazer(pygame.sprite.Sprite):
+   LAZER_STATS = {
+       LazerType.Normali:{"size":1,"color":RED},
+       LazerType.Mostthennormali:{"size":5,"color":BLUE},
+       LazerType.Big:{"size":15, "color":BLACK}
+   }

@@ -15,7 +15,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("NO HUMANITY")
 clock = pygame.time.Clock()
 
-# Цвета
+# Цвет
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 DARK_GRAY = (30, 30, 30)
